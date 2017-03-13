@@ -12,9 +12,7 @@ Setup a CloudTrail trail.
 * ___aws_region:___ AWS region.  Used to find remote state.
 
 ### Optional
-* ___s3_bucket_prefix:___
-
-* ___enable_logging:___
+* ___s3_bucket_prefix:___ S3 prefix for logs.
 
 * ___enable_logging:___ Enable logging, set to 'false' to Pause logging.
 
