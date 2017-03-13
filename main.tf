@@ -46,7 +46,6 @@ variable "is_multi_region_trail" {
 module "aws_cloudtrail_s3_bucket" {
   source = "github.com/tmclaugh/tf_straycat_aws_s3"
   s3_bucket_name = "${var.s3_bucket_name}"
-  #s3_logs_bucket =
   versioning = true
   aws_account = "${var.aws_account}"
   aws_region = "${var.aws_region}"
