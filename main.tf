@@ -6,6 +6,11 @@ variable "aws_account" {
   description = "Used for naming S3 bucket in tf_straycat_aws_s3"
 }
 
+variable "aws_account_id" {
+  type = "string"
+  description = "Used for CloudTrail role."
+}
+
 variable "aws_region" {
   type = "string"
   description = "Used for finding root state in tf_straycat_aws_s3"
@@ -87,6 +92,68 @@ resource "aws_s3_bucket_policy" "bucket" {
 POLICY
 }
 
+resource "aws_cloudwatch_log_group" "ct" {
+  name = "/aws/cloudtrail/${var.aws_cloudtrail_name}"
+  tags {
+    terraform = "true"
+  }
+}
+
+resource "aws_iam_role" "ct" {
+  name = "cloudtrail-to-cloudwatch-${var.aws_cloudtrail_name}"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudtrail.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "ct" {
+  name = "cloudtrail-to-cloudwatch-${var.aws_cloudtrail_name}"
+  description = "Deliver logs from CloudTrail to CloudWatch."
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AWSCloudTrailCreateLogStream",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream"
+      ],
+      "Resource": [
+        "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/cloudtrail/${var.aws_cloudtrail_name}:log-stream:${var.aws_account_id}_CloudTrail_${var.aws_region}*"
+      ]
+    },
+    {
+      "Sid": "AWSCloudTrailPutLogEvents",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/cloudtrail/${var.aws_cloudtrail_name}:log-stream:${var.aws_account_id}_CloudTrail_${var.aws_region}*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ct" {
+  role = "${aws_iam_role.ct.name}"
+  policy_arn = "${aws_iam_policy.ct.arn}"
+}
 
 resource "aws_cloudtrail" "ct" {
   name                          = "${var.aws_cloudtrail_name}"
@@ -95,6 +162,8 @@ resource "aws_cloudtrail" "ct" {
   enable_log_file_validation    = "${var.enable_log_file_validation}"
   include_global_service_events = "${var.include_global_service_events}"
   is_multi_region_trail         = "${var.enable_log_file_validation}"
+  cloud_watch_logs_group_arn    = "${aws_cloudwatch_log_group.ct.arn}"
+  cloud_watch_logs_role_arn     = "${aws_iam_role.ct.arn}"
   depends_on                    = ["aws_s3_bucket_policy.bucket"]
 }
 
@@ -110,6 +179,14 @@ output "cloudtrail_home_region" {
 
 output "cloudtrail_arn" {
   value = "${aws_cloudtrail.ct.arn}"
+}
+
+output "iam_role_cloudtrail_arn" {
+  value = "${aws_iam_role.ct.arn}"
+}
+
+output "cloudwatch_log_group_arn" {
+  value = "${aws_cloudwatch_log_group.ct.arn}"
 }
 
 output "s3_bucket_id" {
