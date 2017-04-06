@@ -24,3 +24,5 @@ Setup a CloudTrail trail.
 
 * ___is_multi_region_trail:___ Whether the trail is created in all regions or just the current region.
 
+## Region support
+This module defaults to creating multi-region CloudTrails.  The reason for this is you should be monitoring those regions not in use by you to ensure that there is no rogue activity.  Your alerting system should alert when events occur in unexpected regions.
